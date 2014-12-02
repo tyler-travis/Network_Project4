@@ -62,4 +62,6 @@ int main(int argc, char** argv)
 
   std::cout << "Number of bytes read: " << rc << std::endl;
   std::cout << "Recieved: " << buf << std::endl;
+
+  return 0;
 }
