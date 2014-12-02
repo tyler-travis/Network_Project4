@@ -12,54 +12,65 @@
 #include <iostream>
 #include <netdb.h>
 #include <errno.h>
+#include <fstream>
 
-//#define IP_ADDR "192.168.1.10"
+#define PORTNUM 6600
 
 int main(int argc, char** argv)
 {
-  int socketHandle;
+  // Remember to turn off the firewall
 
-  // Create Socket
-  if((socketHandle = socket(PF_INET, SOCK_STREAM, IPPROTO_IP)) < 0)
+  FILE* fout = fopen("message.txt", "w");
+
+  fprintf(fout,"Testing...\n");
+
+  struct sockaddr_in client, server;
+  int mySocket;
+  socklen_t socksize = sizeof(sockaddr_in);
+
+  bzero(&server, sizeof(sockaddr_in));
+  server.sin_family = PF_INET;
+  server.sin_addr.s_addr = htonl(INADDR_ANY);
+  server.sin_port = htons(PORTNUM);
+
+  mySocket = socket(PF_INET, SOCK_STREAM, 0);
+  if (mySocket < 0)
   {
-    close(socketHandle);
-    exit(EXIT_FAILURE);
+    printf("Error: Error creating socket.\n");
+    exit(0);
   }
 
-  struct sockaddr_in socketInfo;
-  int portNumber = 6600;
-
-  // Initialize structure to zero
-  bzero(&socketInfo, sizeof(sockaddr_in));
-
-  // Set up socketInfo
-  socketInfo.sin_family = PF_INET;
-  socketInfo.sin_addr.s_addr = htonl(INADDR_ANY);
-  socketInfo.sin_port = htons(portNumber);
-
-  // Bind the socket
-  if(bind(socketHandle, (struct sockaddr *) &socketInfo, sizeof(struct sockaddr_in)) < 0)
+  if (bind(mySocket, (struct sockaddr *) &server, sizeof(struct sockaddr)) < 0)
   {
-    close(socketHandle);
-    perror("bind");
-    exit(EXIT_FAILURE);
+    printf("Error: Could not bind socket to port.\n");
+    exit(0);
   }
 
-  listen(socketHandle, 1);
-
-  int socketConnection;
-  if((socketConnection = accept(socketHandle, NULL, NULL)) < 0)
+  if (listen(mySocket, 1))
   {
-    close(socketHandle);
-    exit(EXIT_FAILURE);
+    printf("Error: Bad listening on socket.\n");
+    exit(0);
   }
 
-  int rc = 0;
-  char buf[1024];
+  int connected = accept(mySocket, (struct sockaddr *) &client, &socksize);
 
-  rc = recv(socketConnection, buf, 512, 0);
-  buf[rc] = (char) NULL;
+  int receive;
+  char buffer[256];
 
-  std::cout << "Number of bytes read: " << rc << std::endl;
-  std::cout << "Recieved: " << buf << std::endl;
+  while (connected)
+  {
+    receive = 0;
+    do
+    {
+      receive = recv(connected, buffer, sizeof(buffer)-1, 0);
+      buffer[receive] = (char)NULL;
+      std::cout << buffer;
+    }while(receive != 0);
+
+    close(connected);
+    connected = accept(mySocket, (struct sockaddr *) &client, &socksize);
+  }
+
+  fclose(fout);
+  return 0;
 }
